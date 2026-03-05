@@ -10,6 +10,16 @@ function getItems() {
 
 function addItem() {
   const addNameTextbox = document.getElementById('add-name');
+  const name = addNameTextbox.value.trim();
+  const errorText = document.getElementById('error-text');
+
+  if (name === "") {
+    errorText.style.display = 'block'; // Show the error message
+    alert('Please enter a name for the to-do item.');
+    return;
+  }
+
+  errorText.style.display = 'none'; // Hide the error message if input is valid
 
   const item = {
     isComplete: false,

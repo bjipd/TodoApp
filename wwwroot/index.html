@@ -1,44 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MakeHasteTo-do CRUD</title>
-    <link rel="stylesheet" href="css/site.css" />
-</head>
-<body>
-    <h1>MakeHaste Todo App</h1>
-    <h3>Add</h3>
-    <form action="javascript:void(0);" method="POST" onsubmit="addItem()">
-        <input type="text" id="add-name" placeholder="New to-do">
-        <input type="submit" value="Add">
-    </form>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <div id="editForm">
-        <h3>Edit</h3>
-        <form action="javascript:void(0);" onsubmit="updateItem()">
-            <input type="hidden" id="edit-id">
-            <input type="checkbox" id="edit-isComplete">
-            <input type="text" id="edit-name">
-            <input type="submit" value="Save">
-            <a onclick="closeInput()" aria-label="Close">&#10006;</a>
+<title>MakeHaste App</title>
+
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-5 text-center">
+
+    <!-- Header Box -->
+    <div class="bg-dark text-white p-4 rounded mx-auto w-50">
+
+        <h1 class="mb-3">MakeHaste App</h1>
+
+        <!-- Form -->
+        <form class="d-flex justify-content-center gap-2">
+
+            <!-- Input + error stacked vertically -->
+            <div class="d-flex flex-column w-50">
+                <input 
+                   type="text" 
+                   id="add-name" 
+                   class="form-control" 
+                   placeholder="New to-do">
+                <div id="error-text" class="text-danger small mt-1" style="display: none;">
+                   Please enter a name for the to-do item.
+                </div>
+            </div>
+
+             <!-- Add button -->
+            <button 
+               type="button" 
+               class="btn btn-primary"
+               onclick="addItem()">
+               Add
+            </button>
+
         </form>
+
     </div>
 
-    <p id="counter"></p>
+    <!-- Counter -->
+    <p id="counter" class="mt-4"></p>
 
-    <table>
-        <tr>
-            <th>Task completion</th>
-            <th>Name</th>
-            <th></th>
-            <th></th>
-        </tr>
-        <tbody id="todos"></tbody>
-    </table>
+    <!-- Todo Table -->
+    <div class="d-flex justify-content-center mt-3">
+        <table class="table table-striped table-bordered w-50 text-center">
 
-    <script src="js/site.js" asp-append-version="true"></script>
-    <script type="text/javascript">
-        getItems();
-    </script>
+            <thead class="table-dark">
+                <tr>
+                    <th>Task completion</th>
+                    <th>Name</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody id="todos"></tbody>
+
+        </table>
+    </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Your JS file -->
+<script src="js/site.js"></script>
+
+<script>
+getItems();
+</script>
+
 </body>
 </html>
