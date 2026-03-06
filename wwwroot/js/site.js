@@ -1,5 +1,9 @@
+
 const uri = 'api/todoitems';
 let todos = [];
+let awaitingTime = false; // Flag to track if we're waiting for time input
+let taskName = ''; // Variable to store the name of the new item being added
+
 
 function getItems() {
   fetch(uri)
@@ -10,21 +14,53 @@ function getItems() {
 
 function addItem() {
   const addNameTextbox = document.getElementById('add-name');
-  const name = addNameTextbox.value.trim();
+  const value = addNameTextbox.value;
+  const trimmedValue = value.trim();
   const errorText = document.getElementById('error-text');
 
-  if (name === "") {
-    errorText.style.display = 'block'; // Show the error message
-    alert('Please enter a name for the to-do item.');
+  // STEP 1 — Require name
+  if (!awaitingTime && trimmedValue === "") {
+    errorText.textContent = "Please enter a name for the to-do item.";
+    errorText.style.display = 'block';
     return;
   }
 
-  errorText.style.display = 'none'; // Hide the error message if input is valid
+  if (!awaitingTime) {
+    taskName = trimmedValue;
+    awaitingTime = true;
+
+    errorText.style.display = "none";
+    addNameTextbox.value = "";
+    addNameTextbox.placeholder = "Enter Estimated time ";
+    addNameTextbox.type = "time";  
+    if (addNameTextbox.showPicker) {
+      addNameTextbox.showPicker();
+    }
+    return;
+  }
+
+  // STEP 2 — Require timeTaken
+  if (awaitingTime && trimmedValue === "") {
+    errorText.textContent = "Please enter an estimated time for the to-do item.";
+    errorText.style.display = 'block';
+    return;
+  }
+
+  const timeTaken = trimmedValue;
 
   const item = {
     isComplete: false,
-    name: addNameTextbox.value.trim()
+    name: taskName,
+    completedAt: timeTaken + ":00" // Append seconds to match TimeSpan format (HH:MM:SS)
   };
+
+  // Reset UI state
+  awaitingTime = false;
+  taskName = "";
+  addNameTextbox.value = "";
+  addNameTextbox.placeholder = "Enter name";
+  addNameTextbox.type = "text";   
+  errorText.style.display = "none";
 
   fetch(uri, {
     method: 'POST',
@@ -34,13 +70,19 @@ function addItem() {
     },
     body: JSON.stringify(item)
   })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+      throw new Error("Server error while adding item.");
+      }
+      return response.json().catch(() => null);
+    })
     .then(() => {
       getItems();
       addNameTextbox.value = '';
     })
     .catch(error => console.error('Unable to add item.', error));
 }
+
 
 function deleteItem(id) {
   fetch(`${uri}/${id}`, {
@@ -61,10 +103,13 @@ function displayEditForm(id) {
 
 function updateItem() {
   const itemId = document.getElementById('edit-id').value;
+  const existingItem = todos.find(t => t.id === parseInt(itemId, 10));
+
   const item = {
     id: parseInt(itemId, 10),
     isComplete: document.getElementById('edit-isComplete').checked,
-    name: document.getElementById('edit-name').value.trim()
+    name: document.getElementById('edit-name').value.trim(),
+    completedAt: existingItem.completedAt // Preserve existing completedAt value
   };
 
   fetch(`${uri}/${itemId}`, {
@@ -136,17 +181,34 @@ function _displayItems(data) {
 
     let td4 = tr.insertCell(3);
     td4.appendChild(deleteButton);
+
+    //const timeFormat = item.createdAt || "";
+
+    let td5 = tr.insertCell(4);
+    td5.appendChild(document.createTextNode(item.createdAt ? item.createdAt.replace("T", " ").split(".")[0] : ""));
+
+    let td6 = tr.insertCell(5);
+    if (item.createdAt) {
+      const d = new Date(item.createdAt);
+      td6.textContent = ` ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${item.completedAt ?? ""}`;
+    } else {
+      td6.textContent = item.completedAt ?? "";
+    }
   });
 
   todos = data;
+
 }
+
+
 
 // NEW FUNCTION — required for checkbox updates
 function toggleComplete(item) {
   const updatedItem = {
     id: item.id,
     name: item.name,
-    isComplete: !item.isComplete
+    completedAt: item.completedAt,
+    isComplete: !Boolean(item.isComplete)
   };
 
   fetch(`${uri}/${item.id}`, {

@@ -58,6 +58,7 @@ namespace MakeHasteApp.Controllers
 
             todoItem.Name = todoDTO.Name;
             todoItem.IsComplete = todoDTO.IsComplete;
+            todoItem.CompletedAt = todoDTO.CompletedAt;
 
             try
             {
@@ -78,7 +79,9 @@ namespace MakeHasteApp.Controllers
             var todoItem = new TodoItem
             {
                 Name = todoDTO.Name,
-                IsComplete = todoDTO.IsComplete
+                IsComplete = todoDTO.IsComplete,
+                CreatedAt = DateTime.UtcNow,
+                CompletedAt = todoDTO.CompletedAt
             };
 
             _context.TodoItems.Add(todoItem);
@@ -110,7 +113,9 @@ namespace MakeHasteApp.Controllers
             {
                 Id = todoItem.Id,
                 Name = todoItem.Name,
-                IsComplete = todoItem.IsComplete
+                IsComplete = todoItem.IsComplete,
+                CreatedAt = todoItem.CreatedAt,
+                CompletedAt = todoItem.CompletedAt
             };
     }
 }
