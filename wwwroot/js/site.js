@@ -1,143 +1,136 @@
-
 const uri = 'api/todoitems';
 let todos = [];
 let awaitingTime = false; // Flag to track if we're waiting for time input
 let taskName = ''; // Variable to store the name of the new item being added
 
-
+// Fetch all tasks from the API
 function getItems() {
   fetch(uri)
     .then(response => response.json())
-    .then(data => _displayItems(data))
+    .then(data => {
+      _displayItems(data);
+      todos = data;
+    })
     .catch(error => console.error('Unable to get items.', error));
 }
 
+// Add a new task
 function addItem() {
   const addNameTextbox = document.getElementById('add-name');
-  const value = addNameTextbox.value;
-  const trimmedValue = value.trim();
+  const value = addNameTextbox.value.trim();
   const errorText = document.getElementById('error-text');
 
-  // STEP 1 — Require name
-  if (!awaitingTime && trimmedValue === "") {
+  if (!awaitingTime && value === "") {
     errorText.textContent = "Please enter a name for the to-do item.";
     errorText.style.display = 'block';
     return;
   }
 
   if (!awaitingTime) {
-    taskName = trimmedValue;
+    taskName = value;
     awaitingTime = true;
 
     errorText.style.display = "none";
     addNameTextbox.value = "";
-    addNameTextbox.placeholder = "Enter Estimated time ";
-    addNameTextbox.type = "time";  
-    if (addNameTextbox.showPicker) {
-      addNameTextbox.showPicker();
-    }
+    addNameTextbox.placeholder = "Enter due date & time (YYYY-MM-DD HH:MM)";
+    addNameTextbox.type = "datetime-local";
+    if (addNameTextbox.showPicker) addNameTextbox.showPicker();
     return;
   }
 
-  // STEP 2 — Require timeTaken
-  if (awaitingTime && trimmedValue === "") {
-    errorText.textContent = "Please enter an estimated time for the to-do item.";
+  if (awaitingTime && value === "") {
+    errorText.textContent = "Please enter a due date/time for the to-do item.";
     errorText.style.display = 'block';
     return;
   }
 
-  const timeTaken = trimmedValue;
+  const dueTime = value.replace(" ", "T"); // normalize for ISO format
 
   const item = {
     isComplete: false,
     name: taskName,
-    completedAt: timeTaken + ":00" // Append seconds to match TimeSpan format (HH:MM:SS)
+    estimatedDueTime: dueTime
   };
 
-  // Reset UI state
+  // Reset UI
   awaitingTime = false;
   taskName = "";
   addNameTextbox.value = "";
   addNameTextbox.placeholder = "Enter name";
-  addNameTextbox.type = "text";   
+  addNameTextbox.type = "text";
   errorText.style.display = "none";
 
   fetch(uri, {
     method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify(item)
   })
     .then(response => {
-      if (!response.ok) {
-      throw new Error("Server error while adding item.");
-      }
+      if (!response.ok) throw new Error("Server error while adding item.");
       return response.json().catch(() => null);
     })
-    .then(() => {
-      getItems();
-      addNameTextbox.value = '';
+    .then(() => {getItems();
+      setTimeout(setTaskReminder, 300); 
     })
     .catch(error => console.error('Unable to add item.', error));
 }
 
-
+// Delete a task
 function deleteItem(id) {
-  fetch(`${uri}/${id}`, {
-    method: 'DELETE'
-  })
-  .then(() => getItems())
-  .catch(error => console.error('Unable to delete item.', error));
+  fetch(`${uri}/${id}`, { method: 'DELETE' })
+    .then(() => getItems())
+    .catch(error => console.error('Unable to delete item.', error));
 }
 
+// Show edit form
 function displayEditForm(id) {
   const item = todos.find(item => item.id === id);
-  
+  if (!item) return;
+
   document.getElementById('edit-name').value = item.name;
   document.getElementById('edit-id').value = item.id;
   document.getElementById('edit-isComplete').checked = item.isComplete;
   document.getElementById('editForm').style.display = 'block';
 }
 
+// Update a task
 function updateItem() {
-  const itemId = document.getElementById('edit-id').value;
-  const existingItem = todos.find(t => t.id === parseInt(itemId, 10));
+  const itemId = parseInt(document.getElementById('edit-id').value, 10);
+  const existingItem = todos.find(t => t.id === itemId);
+
+  if (!existingItem) return;
 
   const item = {
-    id: parseInt(itemId, 10),
+    id: itemId,
     isComplete: document.getElementById('edit-isComplete').checked,
     name: document.getElementById('edit-name').value.trim(),
-    completedAt: existingItem.completedAt // Preserve existing completedAt value
+    estimatedDueTime: existingItem.estimatedDueTime
   };
 
   fetch(`${uri}/${itemId}`, {
     method: 'PUT',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify(item)
   })
-  .then(() => getItems())
-  .catch(error => console.error('Unable to update item.', error));
+    .then(() => getItems())
+    .catch(error => console.error('Unable to update item.', error));
 
   closeInput();
-
   return false;
 }
 
+// Close edit form
 function closeInput() {
   document.getElementById('editForm').style.display = 'none';
 }
 
+// Display task count
 function _displayCount(itemCount) {
-  const name = (itemCount === 1) ? 'to-do' : 'to-dos';
-
+  const name = itemCount === 1 ? 'to-do' : 'to-dos';
   document.getElementById('counter').innerText = `${itemCount} ${name}`;
 }
 
+// Display all tasks in the table
 function _displayItems(data) {
   const tBody = document.getElementById('todos');
   tBody.innerHTML = '';
@@ -147,78 +140,125 @@ function _displayItems(data) {
   const button = document.createElement('button');
 
   data.forEach(item => {
-    let isCompleteCheckbox = document.createElement('input');
+    // Checkbox
+    const isCompleteCheckbox = document.createElement('input');
     isCompleteCheckbox.type = 'checkbox';
     isCompleteCheckbox.checked = item.isComplete;
     isCompleteCheckbox.onclick = () => toggleComplete(item);
 
-    let editButton = button.cloneNode(false);
+    // Edit button
+    const editButton = button.cloneNode(false);
     editButton.innerText = 'Edit';
     editButton.setAttribute('onclick', `displayEditForm(${item.id})`);
-
-    // NEW: disable Edit button if item is complete 
-    if (item.isComplete) 
-    {   editButton.disabled = true; 
-        editButton.style.opacity = "0.5"; // optional visual cue 
-        editButton.style.cursor = "not-allowed"; 
+    if (item.isComplete) {
+      editButton.disabled = true;
+      editButton.style.opacity = "0.5";
+      editButton.style.cursor = "not-allowed";
     }
-    
-    let deleteButton = button.cloneNode(false);
+
+    // Delete button
+    const deleteButton = button.cloneNode(false);
     deleteButton.innerText = 'Delete';
     deleteButton.setAttribute('onclick', `deleteItem(${item.id})`);
 
-    let tr = tBody.insertRow();
-    
-    let td1 = tr.insertCell(0);
-    td1.appendChild(isCompleteCheckbox);
-
-    let td2 = tr.insertCell(1);
-    let textNode = document.createTextNode(item.name);
-    td2.appendChild(textNode);
-
-    let td3 = tr.insertCell(2);
-    td3.appendChild(editButton);
-
-    let td4 = tr.insertCell(3);
-    td4.appendChild(deleteButton);
-
-    //const timeFormat = item.createdAt || "";
-
-    let td5 = tr.insertCell(4);
-    td5.appendChild(document.createTextNode(item.createdAt ? item.createdAt.replace("T", " ").split(".")[0] : ""));
-
-    let td6 = tr.insertCell(5);
-    if (item.createdAt) {
-      const d = new Date(item.createdAt);
-      td6.textContent = ` ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${item.completedAt ?? ""}`;
-    } else {
-      td6.textContent = item.completedAt ?? "";
-    }
+    // Table row
+    const tr = tBody.insertRow();
+    tr.insertCell(0).appendChild(isCompleteCheckbox);
+    tr.insertCell(1).appendChild(document.createTextNode(item.name));
+    tr.insertCell(2).appendChild(editButton);
+    tr.insertCell(3).appendChild(deleteButton);
+    tr.insertCell(4).appendChild(document.createTextNode(item.createdAt ? item.createdAt.replace("T", " ").split(".")[0] : ""));
+    tr.insertCell(5).textContent = item.estimatedDueTime ? new Date(item.estimatedDueTime).toLocaleString() : "";
   });
 
   todos = data;
-
 }
 
-
-
-// NEW FUNCTION — required for checkbox updates
+// Toggle task completion
 function toggleComplete(item) {
   const updatedItem = {
     id: item.id,
     name: item.name,
-    completedAt: item.completedAt,
-    isComplete: !Boolean(item.isComplete)
+    estimatedDueTime: item.estimatedDueTime,
+    isComplete: !item.isComplete
   };
 
   fetch(`${uri}/${item.id}`, {
     method: 'PUT',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify(updatedItem)
   })
-  .then(() => getItems())
-  .catch(error => console.error('Unable to update item.', error));
+    .then(() => getItems())
+    .catch(error => console.error('Unable to update item.', error));
 }
+
+
+function setTaskReminder() {
+  fetch(uri)
+    .then(response => response.json())
+    .then(data => {
+      data.forEach((item, i) => {
+        if (item.createdAt && item.estimatedDueTime) {
+          const createdTime = item.createdAt.split("T")[1].split(".")[0].slice(0, 8); // "12:45"
+          const dueTime = item.estimatedDueTime.split("T")[1].split(".")[0].slice(0, 8); // "17:30"
+
+          const diff = getTimeDifference(createdTime, dueTime);
+
+          //Schedule alert after the duration
+          setTimeout(() => {
+            alert(`Task "${item.title || i + 1}" expired!`);
+          }, diff.milliseconds);
+          
+        }
+      });
+         alert(
+            `Task ${item.name} → Duration: ${diff.hours}h ${diff.minutes}m, will alert in ${diff.milliseconds}ms`
+           );
+    })
+    .catch(error => console.error('Unable to get items.', error));
+}
+
+function getTimeDifference(startTime, endTime) {
+
+  const [startHour, startMin, startSec] = startTime.split(":").map(Number);
+  const [endHour, endMin, endSec] = endTime.split(":").map(Number);
+
+  // Convert both times to total seconds
+  const startTotal = startHour * 3600 + startMin * 60 + startSec;
+  const endTotal = endHour * 3600 + endMin * 60 + endSec;
+
+  // Difference in seconds
+  let diffSeconds = endTotal - startTotal;
+
+  // Optional: handle negative difference (if end is next day)
+  if (diffSeconds < 0) diffSeconds += 24 * 3600;
+
+  const hours = Math.floor(diffSeconds / 3600);
+  const minutes = Math.floor((diffSeconds % 3600) / 60);
+  const seconds = diffSeconds % 60;
+
+  // Return milliseconds too for setTimeout
+  const milliseconds = diffSeconds * 1000;
+
+  return { hours, minutes, seconds, milliseconds };
+
+}
+
+/////// ADVERT POP UP SECTION ///////
+// function showModalxxxxxxxxxxxxxx() {
+//     const modal = document.getElementById('task-modal');
+//     if (modal) {
+//       modal.style.display = 'block';
+//     }
+//   }
+
+//   // Function to close the modal
+//   function closeModal() {
+//     const modal = document.getElementById('task-modal');
+//     if (modal) {
+//       modal.style.display = 'none';
+//     }
+//   }
+
+//   // Show the modal every 2 minutes (120000 ms)
+//   setInterval(showModal, 30000);

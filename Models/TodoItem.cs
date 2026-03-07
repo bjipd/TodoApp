@@ -8,7 +8,8 @@ namespace MakeHasteApp.Models
         public string? Name { get; set; }
         public bool IsComplete { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public TimeSpan? CompletedAt { get; set; }
-        public string? Secret { get; set; }
+        public DateTime? EstimatedDueTime { get; set; }
+        public DateTime? LastReminderAt { get; set; }
+        public ApplicationUser User { get; set; }
     }
 }

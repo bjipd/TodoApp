@@ -4,9 +4,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MakeHasteApp.Models;
+using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MakeHasteApp.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class TodoItemsController : ControllerBase
@@ -26,7 +29,7 @@ namespace MakeHasteApp.Controllers
                 return NotFound();
 
             return await _context.TodoItems
-                .Select(x => ItemToDTO(x))
+                .OrderByDescending(t => t.CreatedAt).Select(x => ItemToDTO(x))
                 .ToListAsync();
         }
 
@@ -58,7 +61,8 @@ namespace MakeHasteApp.Controllers
 
             todoItem.Name = todoDTO.Name;
             todoItem.IsComplete = todoDTO.IsComplete;
-            todoItem.CompletedAt = todoDTO.CompletedAt;
+            todoItem.EstimatedDueTime = todoDTO.EstimatedDueTime;
+
 
             try
             {
@@ -76,12 +80,15 @@ namespace MakeHasteApp.Controllers
         [HttpPost]
         public async Task<ActionResult<TodoItemDTO>> PostTodoItem(TodoItemDTO todoDTO)
         {
+            if(!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var todoItem = new TodoItem
             {
                 Name = todoDTO.Name,
                 IsComplete = todoDTO.IsComplete,
                 CreatedAt = DateTime.UtcNow,
-                CompletedAt = todoDTO.CompletedAt
+                EstimatedDueTime = todoDTO.EstimatedDueTime
             };
 
             _context.TodoItems.Add(todoItem);
@@ -115,7 +122,15 @@ namespace MakeHasteApp.Controllers
                 Name = todoItem.Name,
                 IsComplete = todoItem.IsComplete,
                 CreatedAt = todoItem.CreatedAt,
-                CompletedAt = todoItem.CompletedAt
+                EstimatedDueTime = todoItem.EstimatedDueTime
+
             };
+
+        private bool isTaskOverdue(TodoItem item)
+        {
+            if(item.EstimatedDueTime == null) return false;
+
+            return !item.IsComplete  && item.EstimatedDueTime.HasValue && DateTime.UtcNow > item.EstimatedDueTime.Value;
+        }    
     }
 }

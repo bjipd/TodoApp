@@ -11,6 +11,6 @@ namespace MakeHasteApp.Models
         public string? Name { get; set; }
         public bool IsComplete { get; set; }
         public DateTime CreatedAt { get; set; }
-        public TimeSpan? CompletedAt { get; set; }
+        public DateTime? EstimatedDueTime { get; set; }
     }
 }
